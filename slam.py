@@ -13,12 +13,12 @@ class World:
 
     def set_grid(self):
         self.grid[:] = '0'
-        self.grid[0, :] = '1'
-        self.grid[-1, :] = '1'
-        self.grid[:, 0] = '1'
-        self.grid[:, -1] = '1'
+        self.grid[0, :] = 'X'
+        self.grid[-1, :] = 'X'
+        self.grid[:, 0] = 'X'
+        self.grid[:, -1] = 'X'
 
-        self.random_items('1', 6)
+        self.random_items('X', 6)
         self.random_items('L', 6)
         self.random_winning_position()
         self.random_robot_position()
@@ -61,7 +61,7 @@ class World:
             for dx, dy in directions:
                 nx, ny = x + dx, y + dy
                 if (1 <= nx < self.size-1 and 1 <= ny < self.size-1 and 
-                    self.grid[nx, ny] not in {'1', 'L'} and (nx, ny) not in visited):
+                    self.grid[nx, ny] not in {'X', 'L'} and (nx, ny) not in visited):
                     queue.append((nx, ny))
                     visited.add((nx, ny))
         
@@ -71,7 +71,7 @@ class World:
         color_map = {
             'W': '\033[93mW\033[0m',  # Yellow
             'L': '\033[91mL\033[0m',  # Red
-            '1': '\033[30m1\033[0m',  # Black
+            'X': '\033[30mX\033[0m',  # Black
             'R': '\033[94mR\033[0m'   # Blue
         }
         for row in self.grid:
