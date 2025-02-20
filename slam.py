@@ -71,13 +71,13 @@ class World:
         color_map = {
             'W': '\033[93mW\033[0m',  # Yellow
             'L': '\033[91mL\033[0m',  # Red
-            'X': '\033[30mX\033[0m',  # Black
+            'X': '\033[2;90mX\033[0m',  # Grey
             'R': '\033[94mR\033[0m'   # Blue
         }
         for row in self.grid:
             print(" ".join(color_map.get(cell, cell) for cell in row))
         print()
-
+    
 if __name__ == '__main__':
     world = World()
     world.display()
