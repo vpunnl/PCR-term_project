@@ -5,6 +5,7 @@ from collections import deque
 class World:
     def __init__(self, size=10):
         self.size = size
+        self.won = False
         while True:
             self.actual_grid = np.zeros((size, size), dtype=str)
             self.set_grid()
@@ -84,21 +85,32 @@ class World:
         print()
     
     def random_move(self):
+
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
-        x, y = self.actual_position
-        sx, sy = self.sensed_position
+
+        x, y = self.actual_position # position on the actual grid
+        sx, sy = self.sensed_position # position on the grid that the robot can see
         while True: # loop until found a valid movement then break the loop
 
             # heuristic, check surrounding area
-            
+            winning = ''
 
-
-            dx, dy = random.choice(directions)
-            nx, ny = x + dx, y + dy
-            nsx, nsy = sx + dx, sy + dy
+            for dx, dy in directions:
+                nx, ny = x + dx, y + dy
+                if self.actual_grid[nx, ny] == 'W':
+                    winning = (dx, dy)
+                    nsx, nsy = sx + dx, sy + dy
+                    break
+            if not winning:
+                dx, dy = random.choice(directions)
+                nx, ny = x + dx, y + dy
+                nsx, nsy = sx + dx, sy + dy
 
             # do the logic of moving within the map, not hitting the walls, and not hitting the L, trying to move to the area that hasnt been explored yet
             if self.actual_grid[nx, ny] not in {'X', 'L'}:
+                if self.actual_grid[nx, ny] == 'W':
+                    print("Winning position reached")
+                    self.won = True
                 # setting visited area
                 self.actual_grid[x, y] = '-'
                 self.sensed_grid[sx, sy] = '-'
@@ -108,7 +120,24 @@ class World:
                 # update the position
                 self.actual_position = (nx, ny)
                 self.sensed_position = (nsx, nsy)
+                
+                for dx, dy in directions:
+                    x, y = self.actual_position
+                    sx, sy = self.sensed_position
+                    nx, ny = x + dx, y + dy
+                    nsx, nsy = sx + dx, sy + dy
+                    if self.actual_grid[nx, ny] in {'W', 'L'}:
+                        self.sensed_grid[nsx, nsy] = self.actual_grid[nx, ny]
                 break
+            else: # see X or L
+                self.sensed_grid[nsx, nsy] = self.actual_grid[nx, ny]
+            
+            # done moving, now will magically know
+            for dx, dy in directions:
+                x, y = self.actual_position
+                nx, ny = x + dx, y + dy
+                if self.actual_grid[nx, ny] in {'W', 'L'}:
+                    self.sensed_grid[nsx, nsy] = self.actual_grid[nx, ny]
         
     def display_sensed(self):
         color_map = {
@@ -126,8 +155,9 @@ class World:
 if __name__ == '__main__':
     world = World()
     count = 0
-    while count<500:
+    while world.won == False:
         world.random_move()
-        # world.display_sensed()
-        world.display()
+        # world.display()
+        world.display_sensed()
         count+=1
+    # world.display()
