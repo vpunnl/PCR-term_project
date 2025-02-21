@@ -93,15 +93,15 @@ class World:
         while True: # loop until found a valid movement then break the loop
 
             # heuristic, check surrounding area
-            winning = ''
+            found_winning_pos = ''
 
             for dx, dy in directions:
                 nx, ny = x + dx, y + dy
                 if self.actual_grid[nx, ny] == 'W':
-                    winning = (dx, dy)
+                    found_winning_pos = (dx, dy)
                     nsx, nsy = sx + dx, sy + dy
                     break
-            if not winning:
+            if not found_winning_pos:
                 dx, dy = random.choice(directions)
                 nx, ny = x + dx, y + dy
                 nsx, nsy = sx + dx, sy + dy
@@ -132,7 +132,7 @@ class World:
             else: # see X or L
                 self.sensed_grid[nsx, nsy] = self.actual_grid[nx, ny]
             
-            # done moving, now will magically know
+            # done moving, now will magically know surroundings if there's W or L
             for dx, dy in directions:
                 x, y = self.actual_position
                 nx, ny = x + dx, y + dy
@@ -157,7 +157,7 @@ if __name__ == '__main__':
     count = 0
     while world.won == False:
         world.random_move()
-        # world.display()
+        world.display()
         world.display_sensed()
         count+=1
     # world.display()
