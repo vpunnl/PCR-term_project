@@ -78,9 +78,3 @@ class World:
         for row in self.grid:
             print(" ".join(color_map.get(cell, cell) for cell in row))
         print()
-
-        print(self.robot_position)
-    
-# if __name__ == '__main__':
-#     world = World()
-#     world.display()
