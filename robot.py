@@ -3,12 +3,11 @@ import math
 class Robot:
     def __init__(self, world):
         self.facing_direction = 'up'
-        self.position = (8, 8)  # Center of the 17x17 grid
+        self.position = (8, 8)
         self.grid = [['+' for _ in range(17)] for _ in range(17)]
-        self.grid[8][8] = 'R'  # Place the robot in the center
+        self.grid[8][8] = 'R'
 
         self.world = world
-        # print('Robot Position : ('+str(self.position[0])+', '+str(self.position[1])+')')
 
     def display_robot_map(self):
         color_map = {
@@ -29,15 +28,37 @@ class Robot:
         
         def generate_points_pairs(walls_list):
             points_pairs = []
-            # print(walls_list)
+            d = 0.5
             for wall in walls_list:
+                y, x = wall
                 if self.facing_direction == 'up':
                     if wall[1] > self.position[1]:
-                        points_pairs.append([[(wall[0] + 0.5, wall[1] - 0.5), (wall[0] + 0.5, wall[1] + 0.5)], [(wall[0] + 0.5, wall[1] - 0.5), (wall[0] - 0.5, wall[1] - 0.5)]])
-                    elif wall[1] < self.position[1]:
-                        points_pairs.append([[(wall[0] + 0.5, wall[1] - 0.5), (wall[0] + 0.5, wall[1] + 0.5)], [(wall[0] + 0.5, wall[1] + 0.5), (wall[0] - 0.5, wall[1] + 0.5)]])
+                        points_pairs.append([[(y + d, wall[1] - d), (y + d, x + d)], [(y + d, x - d), (y - d, x - d)]])
+                    elif x < self.position[1]:
+                        points_pairs.append([[(y + d, x - d), (y + d, x + d)], [(y + d, x + d), (y - d, x + d)]])
                     else:
-                        points_pairs.append([[(wall[0] + 0.5, wall[1] - 0.5), (wall[0] + 0.5, wall[1] + 0.5)]])
+                        points_pairs.append([[(y + d, x - d), (y + d, x + d)]])
+                if self.facing_direction == 'down':
+                    if x > self.position[1]:
+                        points_pairs.append([[(y - d, x - d), (y - d, x + d)], [(y + d, x - d), (y - d, x - d)]])
+                    elif x < self.position[1]:
+                        points_pairs.append([[(y - d, x - d), (y - d, x + d)], [(y + d, x + d), (y - d, x + d)]])
+                    else:
+                        points_pairs.append([[(y - d, x - d), (y - d, x + d)]])
+                if self.facing_direction == 'right':
+                    if y > self.position[0]:
+                        points_pairs.append([[(y + d, x - d), (y - d, x - d)], [(y - d, x + d), (y - d, x - d)]])
+                    elif y < self.position[0]:
+                        points_pairs.append([[(y + d, x - d), (y - d, x - d)], [(y + d, x - d), (y + d, x + d)]])
+                    else:
+                        points_pairs.append([[(y + d, x - d), (y - d, x - d)]])
+                if self.facing_direction == 'left':
+                    if y > self.position[0]:
+                        points_pairs.append([[(y - d, x + d), (y + d, x + d)], [(y - d, x + d), (y - d, x - d)]])
+                    elif y < self.position[0]:
+                        points_pairs.append([[(y - d, x + d), (y + d, x + d)], [(y + d, x - d), (y + d, x + d)]])
+                    else:
+                        points_pairs.append([[(y - d, x + d), (y + d, x + d)]])
             return points_pairs
         
         def ccw(A, B, C):
@@ -46,17 +67,24 @@ class Robot:
         def intersect(A, B, C, D):
             return ccw(A, C, D) != ccw(B, C, D) and ccw(A, B, C) != ccw(A, B, D)
         
-        def find_intersection(grid, points_pairs):
+        def find_intersection(points_pairs, direction_offsets):
             index_hit = []
+            dy, dx = direction_offsets.get(self.facing_direction, (0, 0))
             for d_angle in range(-angle, angle + 1):
                 for more_precise_angle in [0, 0.5]:
                     d_angle += more_precise_angle
                     for index, walls in enumerate(points_pairs):
                         for line in walls:
-                            camera_line = [
-                                (self.position[0], self.position[1]),
-                                (self.position[0] - ((depth + 1) * math.cos(d_angle * math.pi / 180)),
-                                self.position[1] + ((depth + 1) * math.sin(d_angle * math.pi / 180)))]
+                            if self.facing_direction in ['up', 'down']:
+                                camera_line = [
+                                    (self.position[0], self.position[1]),
+                                    (self.position[0] + ((depth + 1) * math.cos(d_angle * math.pi / 180) * dy),
+                                    self.position[1] + ((depth + 1) * math.sin(d_angle * math.pi / 180)))]
+                            elif self.facing_direction in ['left', 'right']:
+                                camera_line = [
+                                    (self.position[0], self.position[1]),
+                                    (self.position[0] + ((depth + 1) * math.sin(d_angle * math.pi / 180)),
+                                    self.position[1] + ((depth + 1) * math.cos(d_angle * math.pi / 180) * dx))]
                             A, B = camera_line
                             C, D = line
                             if intersect(A, B, C, D):
@@ -67,35 +95,52 @@ class Robot:
                         break
             return list(set(index_hit))
         
-        if self.world.grid[self.world.robot_position[0] - 1, self.world.robot_position[1]] == 'X':
-            self.grid[self.position[0] - 1][self.position[1]] = 'X'
+        direction_offsets = {
+            'up': (-1, 0),
+            'down': (1, 0),
+            'left': (0, -1),
+            'right': (0, 1)}
+
+        dy, dx = direction_offsets.get(self.facing_direction, (0, 0))
+        robot_y, robot_x = self.world.robot_position
+        grid_y, grid_x = self.position
+
+        if self.world.grid[robot_y + dy, robot_x + dx] == 'X':
+            self.grid[grid_y + dy][grid_x + dx] = 'X'
             return
 
         level = 0
         grid_within_angle = []
         while (level < depth):
-            horizontal_sensing = math.ceil(abs(math.tan(angle * math.pi / 180) * (level + 0.5)) - 0.5)
-            for i in range(0, -horizontal_sensing-2, -1):
-                world_robot_position = self.world.robot_position
-                sensing_position = (world_robot_position[0] - level - 1, world_robot_position[1] + i)
-                robot_sensing_position = (self.position[0] - level - 1, self.position[1] + i)
-                # if in_grid(sensing_position):
-                #     self.grid[robot_sensing_position[0]][robot_sensing_position[1]] = self.world.grid[sensing_position[0]][sensing_position[1]]
-                if (in_grid(sensing_position) and self.world.grid[sensing_position[0], sensing_position[1]] == 'X'):
-                    grid_within_angle.append(robot_sensing_position)
-            for i in range(0, horizontal_sensing + 2):
-                world_robot_position = self.world.robot_position
-                sensing_position = (world_robot_position[0] - level - 1, world_robot_position[1] + i)
-                robot_sensing_position = (self.position[0] - level - 1, self.position[1] + i)
-                # if in_grid(sensing_position):
-                #     self.grid[robot_sensing_position[0]][robot_sensing_position[1]] = self.world.grid[sensing_position[0]][sensing_position[1]]
-                if (in_grid(sensing_position) and self.world.grid[sensing_position[0], sensing_position[1]] == 'X'):
-                    grid_within_angle.append(robot_sensing_position)
+            world_robot_position = self.world.robot_position
+            sensing_grid = math.ceil(abs(math.tan(angle * math.pi / 180) * (level + 0.5)) - 0.5)
+            if self.facing_direction in ['up', 'down']:
+                for i in range(0, -sensing_grid-2, -1):
+                    sensing_position = (world_robot_position[0] + (level + 1) * dy, world_robot_position[1] + i)
+                    robot_sensing_position = (self.position[0] + (level + 1) * dy, self.position[1] + i)
+                    if (in_grid(sensing_position) and self.world.grid[sensing_position[0], sensing_position[1]] == 'X'):
+                        grid_within_angle.append(robot_sensing_position)
+                for i in range(0, sensing_grid + 2):
+                    sensing_position = (world_robot_position[0] + (level + 1) * dy, world_robot_position[1] + i)
+                    robot_sensing_position = (self.position[0] + (level + 1) * dy, self.position[1] + i)
+                    if (in_grid(sensing_position) and self.world.grid[sensing_position[0], sensing_position[1]] == 'X'):
+                        grid_within_angle.append(robot_sensing_position)
+
+            if self.facing_direction in ['left', 'right']:
+                for i in range(0, -sensing_grid-2, -1):
+                    sensing_position = (world_robot_position[0] + i, world_robot_position[1] + (level + 1) * dx)
+                    robot_sensing_position = (self.position[0] + i, self.position[1] + (level + 1) * dx)
+                    if (in_grid(sensing_position) and self.world.grid[sensing_position[0], sensing_position[1]] == 'X'):
+                        grid_within_angle.append(robot_sensing_position)
+                for i in range(0, sensing_grid + 2):
+                    sensing_position = (world_robot_position[0] + i, world_robot_position[1] + (level + 1) * dx)
+                    robot_sensing_position = (self.position[0] + i, self.position[1] + (level + 1) * dx)
+                    if (in_grid(sensing_position) and self.world.grid[sensing_position[0], sensing_position[1]] == 'X'):
+                        grid_within_angle.append(robot_sensing_position)
             level += 1
-        # print(grid_in_angle)
+
         pairs = generate_points_pairs(grid_within_angle)
-        # print('')
-        sensed_index = find_intersection(grid_within_angle, pairs)
+        sensed_index = find_intersection(pairs, direction_offsets)
         for index in sensed_index:
             x_grid = grid_within_angle[index]
             self.grid[x_grid[0]][x_grid[1]] = 'X'
