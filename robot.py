@@ -8,6 +8,12 @@ class Robot:
         self.grid[8][8] = 'R'
 
         self.world = world
+        self.camera_angle = 30 # Lets say default angle = 60 degree
+        self.camera_depth = 5 # Lets say default depth for our camera = 5 grids
+
+    def set_camera(self, angle, depth):
+        self.camera_angle = int(angle / 2)
+        self.camera_depth = depth
 
     def display_robot_map(self):
         color_map = {
@@ -22,7 +28,7 @@ class Robot:
             print(' '.join(color_map.get(cell, cell) for cell in row))
 
 
-    def camera_sensing(self, angle, depth):
+    def camera_sensing(self):
         def in_grid(position):
             return 0 <= position[0] < 10 and 0 <= position[1] < 10
         
@@ -70,7 +76,7 @@ class Robot:
         def find_intersection(points_pairs, direction_offsets):
             index_hit = []
             dy, dx = direction_offsets.get(self.facing_direction, (0, 0))
-            for d_angle in range(-angle, angle + 1):
+            for d_angle in range(-self.camera_angle, self.camera_angle + 1):
                 for more_precise_angle in [0, 0.5]:
                     d_angle += more_precise_angle
                     for index, walls in enumerate(points_pairs):
@@ -78,13 +84,13 @@ class Robot:
                             if self.facing_direction in ['up', 'down']:
                                 camera_line = [
                                     (self.position[0], self.position[1]),
-                                    (self.position[0] + ((depth + 1) * math.cos(d_angle * math.pi / 180) * dy),
-                                    self.position[1] + ((depth + 1) * math.sin(d_angle * math.pi / 180)))]
+                                    (self.position[0] + ((self.camera_depth + 1) * math.cos(d_angle * math.pi / 180) * dy),
+                                    self.position[1] + ((self.camera_depth + 1) * math.sin(d_angle * math.pi / 180)))]
                             elif self.facing_direction in ['left', 'right']:
                                 camera_line = [
                                     (self.position[0], self.position[1]),
-                                    (self.position[0] + ((depth + 1) * math.sin(d_angle * math.pi / 180)),
-                                    self.position[1] + ((depth + 1) * math.cos(d_angle * math.pi / 180) * dx))]
+                                    (self.position[0] + ((self.camera_depth + 1) * math.sin(d_angle * math.pi / 180)),
+                                    self.position[1] + ((self.camera_depth + 1) * math.cos(d_angle * math.pi / 180) * dx))]
                             A, B = camera_line
                             C, D = line
                             if intersect(A, B, C, D):
@@ -111,9 +117,9 @@ class Robot:
 
         level = 0
         grid_within_angle = []
-        while (level < depth):
+        while (level < self.camera_depth):
             world_robot_position = self.world.robot_position
-            sensing_grid = math.ceil(abs(math.tan(angle * math.pi / 180) * (level + 0.5)) - 0.5)
+            sensing_grid = math.ceil(abs(math.tan(self.camera_angle * math.pi / 180) * (level + 0.5)) - 0.5)
             if self.facing_direction in ['up', 'down']:
                 for i in range(0, -sensing_grid-2, -1):
                     sensing_position = (world_robot_position[0] + (level + 1) * dy, world_robot_position[1] + i)
