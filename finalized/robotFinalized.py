@@ -228,11 +228,11 @@ class Robot:
         while True:
             found_winning_pos = ''
 
-            if self.pointless_walks > 100 and directions:
-                self.constrain = {'X','L', '!'}
-            elif self.pointless_walks > 200 and directions:
+            if self.pointless_walks > 200 and directions:
                 self.constrain = {'X','L'}
-            elif directions:
+            elif self.pointless_walks > 100 and directions:
+                self.constrain = {'X','L', '!'}
+            elif self.pointless_walks <= 100 and directions:
                 self.constrain = {'X','L', '?', '!'}
 
             if not directions: 
