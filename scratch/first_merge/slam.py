@@ -26,7 +26,7 @@ if __name__=='__main__':
     robot.sense(False)
     robot.display_robot_map()
     count = 0
-    while robot.won == False:
+    while (robot.won or robot.lost) == False:
         print('------------------------------------new move------------------------------------')
         print(count)
         print('pointless walk : ',robot.pointless_walks)
@@ -36,9 +36,16 @@ if __name__=='__main__':
         # robot.camera_sensing()
         print('the robot is now facing :',robot.facing_direction)
         count+=1
+        if robot.position in world.losing_positions:
+            robot.lost = True
+            print('You lost')
+
+        if robot.position == world.winning_position:
+            robot.won = True
+            print('You won')
         world.display()
         robot.display_robot_map()
 
-    print('WON')
+    print('GAME OVER')
     world.display()        
     robot.display_robot_map()

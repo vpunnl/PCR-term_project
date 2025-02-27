@@ -13,6 +13,7 @@ class Robot:
         self.constrain = {'X','L', '?', '!'}
         self.pointless_walks = 0
         self.won = False
+        self.lost = False
 
     def set_camera(self, angle, depth):
         self.camera_angle = int(angle / 2)
@@ -248,7 +249,7 @@ class Robot:
                 else:
                     self.pointless_walks = 0
                 if self.world.grid[ny, nx] == 'W':
-                    self.won = True
+                    self.won = True # winning
                     self.world.grid[y, x] = '-'
                     self.grid[sy][sx] = '-'
                     self.world.grid[ny, nx] = 'R'

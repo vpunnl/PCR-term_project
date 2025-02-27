@@ -5,6 +5,9 @@ from collections import deque
 class World:
     def __init__(self, size=10):
         self.size = size
+        self.robot_position = (0, 0)
+        # self.losing_positions = []
+        # self.winning_position = (0, 0)
         while True:
             self.grid = np.zeros((size, size), dtype=str)
             self.set_grid()
@@ -19,8 +22,8 @@ class World:
         self.grid[:, -1] = 'X'
 
         self.random_items('X', 6)
-        self.random_items('L', 6)
-        self.random_winning_position()
+        self.losing_positions = self.random_items('L', 6)
+        self.winning_position = self.random_winning_position()
         self.random_robot_position()
 
     def random_items(self, item, count):
@@ -30,40 +33,41 @@ class World:
         selected_positions = random.sample(empty_positions, min(count, len(empty_positions)))
         for pos in selected_positions:
             self.grid[pos] = item
+        return selected_positions
 
     def random_winning_position(self):
         while True:
-            x, y = random.randint(1, self.size-2), random.randint(1, self.size-2)
-            if self.grid[x, y] == '0':
-                self.grid[x, y] = 'W'
-                self.win_position = (x, y)
-                break
+            y, x = random.randint(1, self.size-2), random.randint(1, self.size-2)
+            if self.grid[y, x] == '0':
+                self.grid[y, x] = 'W'
+                self.win_position = (y, x)
+                return (y, x)
 
     def random_robot_position(self):
         while True:
-            x, y = random.randint(1, self.size-2), random.randint(1, self.size-2)
-            if self.grid[x, y] == '0':
-                self.grid[x, y] = 'R'
-                self.robot_position = (x, y)
+            y, x = random.randint(1, self.size-2), random.randint(1, self.size-2)
+            if self.grid[y, x] == '0':
+                self.grid[y, x] = 'R'
+                self.robot_position = (y, x)
                 break
 
     def is_reachable(self):
         queue = deque([self.robot_position])
         visited = set()
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
-        
+
         while queue:
-            x, y = queue.popleft()
-            if (x, y) == self.win_position:
+            y, x = queue.popleft()
+            if (y, x) == self.win_position:
                 return True
             
-            visited.add((x, y))
-            for dx, dy in directions:
-                nx, ny = x + dx, y + dy
-                if (1 <= nx < self.size-1 and 1 <= ny < self.size-1 and 
-                    self.grid[nx, ny] not in {'X', 'L'} and (nx, ny) not in visited):
-                    queue.append((nx, ny))
-                    visited.add((nx, ny))
+            visited.add((y, x))
+            for dy, dx in directions:
+                ny, nx = y + dy, x + dx
+                if (1 <= ny < self.size-1 and 1 <= nx < self.size-1 and 
+                    self.grid[ny, nx] not in {'X', 'L'} and (ny, nx) not in visited):
+                    queue.append((ny, nx))
+                    visited.add((ny, nx))
         
         return False
 
