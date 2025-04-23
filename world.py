@@ -5,6 +5,9 @@ from collections import deque
 class World:
     def __init__(self, size=10):
         self.size = size
+        self.robot_position = (0, 0)
+        # self.losing_positions = []
+        # self.winning_position = (0, 0)
         while True:
             self.grid = np.zeros((size, size), dtype=str)
             self.set_grid()
@@ -19,8 +22,8 @@ class World:
         self.grid[:, -1] = 'X'
 
         self.random_items('X', 6)
-        self.random_items('L', 6)
-        self.random_winning_position()
+        self.losing_positions = self.random_items('L', 6)
+        self.winning_position = self.random_winning_position()
         self.random_robot_position()
 
     def random_items(self, item, count):
@@ -30,6 +33,7 @@ class World:
         selected_positions = random.sample(empty_positions, min(count, len(empty_positions)))
         for pos in selected_positions:
             self.grid[pos] = item
+        return selected_positions
 
     def random_winning_position(self):
         while True:
@@ -37,7 +41,7 @@ class World:
             if self.grid[y, x] == '0':
                 self.grid[y, x] = 'W'
                 self.win_position = (y, x)
-                break
+                return (y, x)
 
     def random_robot_position(self):
         while True:

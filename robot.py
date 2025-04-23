@@ -1,4 +1,6 @@
 import math
+import random
+from collections import Counter
 
 class Robot:
     def __init__(self, world):
@@ -6,14 +8,33 @@ class Robot:
         self.position = (8, 8)
         self.grid = [['+' for _ in range(17)] for _ in range(17)]
         self.grid[8][8] = 'R'
-
         self.world = world
         self.camera_angle = 30 # Lets say default angle = 60 degree
         self.camera_depth = 5 # Lets say default depth for our camera = 5 grids
+        self.won = False
+        self.lost = False        
+
+        self.moved = []
+        self.questionmark = []
+        self.safeposition = []
+        self.sensed_danger_position = []
+        self.sensed_win_position = []
+        self.walls = []
+        self.possible_winning_position = []
 
     def set_camera(self, angle, depth):
         self.camera_angle = int(angle / 2)
         self.camera_depth = depth
+
+    def init_robot(self):
+        self.facing_direction = 'up'
+        self.camera_sensing()
+        self.facing_direction = 'down'
+        self.camera_sensing()
+        self.facing_direction = 'right'
+        self.camera_sensing()
+        self.facing_direction = 'left'
+        self.camera_sensing()
 
     def display_robot_map(self):
         color_map = {
@@ -22,11 +43,13 @@ class Robot:
             'X': '\033[2;90mX\033[0m',  # Grey
             'R': '\033[94mR\033[0m',  # Blue
             '+': '\033[30m+\033[0m',  # Black
-            '-': '\033[97m-\033[0m'   # White
+            '-': '\033[97m-\033[0m',   # White
+            '?': '\033[91m?\033[0m',  # Red
+            '$': '\033[93m$\033[0m', # Yellow
+            
         }
         for row in self.grid:
             print(' '.join(color_map.get(cell, cell) for cell in row))
-
 
     def camera_sensing(self):
         def in_grid(position):
@@ -113,6 +136,8 @@ class Robot:
 
         if self.world.grid[robot_y + dy, robot_x + dx] == 'X':
             self.grid[grid_y + dy][grid_x + dx] = 'X'
+            if (grid_y + dy, grid_x + dx) not in self.walls:
+                    self.walls.append((grid_y + dy, grid_x + dx))
             return
 
         level = 0
@@ -150,4 +175,142 @@ class Robot:
         for index in sensed_index:
             x_grid = grid_within_angle[index]
             self.grid[x_grid[0]][x_grid[1]] = 'X'
+            if (x_grid[0], x_grid[1]) not in self.walls:
+                    self.walls.append((x_grid[0], x_grid[1]))
         return
+    
+    def is_not_wall(self, position):
+        y, x = position
+        return self.grid[y][x] != 'X'
+    
+    def is_visited(self, position):
+        return position in self.moved
+    
+    def is_safe(self, position):
+        return position in self.safeposition
+    
+    def is_moved(self, position):
+        return position in self.moved
+    
+    def update_possible_dangers(self):
+        directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+
+        for sy, sx in self.moved:
+            flag_count = 0
+            safe_count = 0
+            rem_flag = None
+            for dy, dx in directions:
+                nsy, nsx = sy + dy, sx + dx
+                if self.grid[nsy][nsx] == '?':
+                    flag_count += 1
+                    rem_flag = (nsy, nsx)
+                elif self.grid[nsy][nsx] in {'-', 'X', 'S'}:
+                    safe_count += 1
+
+            if flag_count == 1 and safe_count == 3:
+                if rem_flag not in self.moved and rem_flag not in self.safeposition:
+                    self.grid[rem_flag[0]][rem_flag[1]] = 'L'
+                    if rem_flag not in self.sensed_danger_position:
+                        self.sensed_danger_position.append(rem_flag)
+
+    def sense(self):
+        y, x = self.world.robot_position  # actual position
+        sy, sx = self.position            # sensed position
+        directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+
+        if self.is_visited((sy, sx)):
+            return
+
+        sensed_danger = False
+        sensed_win = False
+
+        for dy, dx in directions:
+            ny, nx = y + dy, x + dx
+            nsy, nsx = sy + dy, sx + dx
+            if self.world.grid[ny, nx] == 'L':
+                sensed_danger = True
+                if (sy, sx) not in self.sensed_danger_position:
+                    self.sensed_danger_position.append((sy, sx))
+            if self.world.grid[ny, nx] == 'W':
+                sensed_win = True
+                if (sy, sx) not in self.sensed_win_position:
+                    self.sensed_win_position.append((sy, sx))
+
+        if sensed_win and (sy, sx) not in self.sensed_win_position:
+            self.sensed_win_position.append((sy, sx))
+            print('sense win')
+
+        if sensed_win:
+            for dy, dx in directions:
+                ny, nx = y + dy, x + dx
+                nsy, nsx = sy + dy, sx + dx
+                if (nsy, nsx) not in self.possible_winning_position and not self.grid[nsy][nsx] == 'X':
+                    self.possible_winning_position.append((nsy, nsx))
+            
+            for pos in self.possible_winning_position:
+                y, x = pos
+                if ((y, x - 1) in self.sensed_win_position and (y, x + 1) in self.sensed_win_position) or \
+                ((y - 1, x) in self.sensed_win_position and (y + 1, x) in self.sensed_win_position):
+                    self.grid[y][x] = 'W'
+
+        for dy, dx in directions:
+            ny, nx = y + dy, x + dx
+            nsy, nsx = sy + dy, sx + dx
+            if not sensed_danger and self.is_not_wall((nsy, nsx)) and not self.is_visited((nsy, nsx)):
+                self.grid[nsy][nsx] = 'S'
+                if (nsy, nsx) not in self.safeposition:
+                    self.safeposition.append((nsy, nsx))
+            elif sensed_danger and self.is_not_wall((nsy, nsx)) and not self.is_safe((nsy, nsx)) and not self.is_moved((nsy, nsx)):
+                self.grid[nsy][nsx] = '?'
+                if (nsy, nsx) not in self.questionmark:
+                    self.questionmark.append((nsy, nsx))
+        
+        self.moved.append((sy, sx))
+        print('S Positions : {0}'.format(self.safeposition))
+        print('? Positions : {0}'.format(self.questionmark))
+        print('Moved Positions : {0}'.format(self.moved))
+        print('X Positions : {0}'.format(self.walls))
+        print('Sensed Win Positions : {0}'.format(self.sensed_win_position))
+        print('Sensed Danger Positions : {0}'.format(self.sensed_danger_position))
+        print('Possible W Positions : {0}'.format(self.possible_winning_position))
+
+    def random_move(self):
+        directions = [((0, 1), 'right'),
+                    ((0, -1), 'left'),
+                    ((1, 0), 'down'),
+                    ((-1, 0), 'up')]
+
+        y, x = self.world.robot_position
+        sy, sx = self.position
+
+        while True:
+            dy, dx, self.facing_direction = random.choice([(d[0][0], d[0][1], d[1]) for d in directions])
+
+
+            # Calculate new positions
+            ny, nx = y + dy, x + dx
+            nsy, nsx = sy + dy, sx + dx
+
+            # Check if it's a valid move
+            if self.grid[nsy][nsx] not in {'X', 'L', '?'}:
+                if self.world.grid[ny, nx] == 'W':
+                    self.won = True
+
+                self.world.grid[y, x] = '-'
+                self.grid[sy][sx] = '-'
+                self.world.grid[ny, nx] = 'R'
+                self.grid[nsy][nsx] = 'R'
+
+                self.world.robot_position = (ny, nx)
+                self.position = (nsy, nsx)
+
+                if self.position in self.safeposition:
+                    self.safeposition.remove(self.position)
+
+                self.sense()
+                self.update_possible_dangers()
+                self.camera_sensing()
+
+                if self.world.robot_position in self.world.losing_positions:
+                    self.lost = True
+                break
